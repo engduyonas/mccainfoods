@@ -53,7 +53,7 @@ const STATUS_CONFIG: Record<string, { row: string; badge: string; dot: string; i
 };
 
 const COUNTRY_CODES = [
-  { code: " ", country: "no", flag: "", label: "private" },
+  { code: "-", country: "no", flag: "-", label: "private" },
   { code: "+1", country: "US", flag: "\u{1F1FA}\u{1F1F8}", label: "United States" },
   { code: "+1", country: "CA", flag: "\u{1F1E8}\u{1F1E6}", label: "Canada" },
   { code: "+44", country: "GB", flag: "\u{1F1EC}\u{1F1E7}", label: "United Kingdom" },
@@ -148,7 +148,7 @@ export default function AdminPage() {
   const { logout } = useAuth();
 
   const [fullName, setFullName] = useState("");
-  const [countryCode, setCountryCode] = useState("-");
+  const [countryCode, setCountryCode] = useState("--");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [passportNumber, setPassportNumber] = useState("");
   const [gender, setGender] = useState("");
