@@ -222,11 +222,9 @@ export default function AdminPage() {
     else if (tn.length < 3) errors.fullName = "Name must be at least 3 characters";
     else if (!/^[a-zA-Z\s\-'.]+$/.test(tn)) errors.fullName = "Letters, spaces, hyphens, and apostrophes only";
 
-    const digits = phoneLocal.replace(/[\s\-()]/g, "");
+    const digits = phoneLocal.trim();;
     if (!digits) errors.phoneNumber = "Phone number is required";
-    else if (!/^\d+$/.test(digits)) errors.phoneNumber = "Digits only";
-    else if (digits.length < 4) errors.phoneNumber = "Too short (min 4 digits)";
-    else if (digits.length > 15) errors.phoneNumber = "Too long (max 15 digits)";
+    
 
     const tp = passportNumber.trim();
     if (!tp) errors.passportNumber = "Passport number is required";
