@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
+import { isMongoConfigured } from "@/lib/mongodb";
 import { updateEmployeeStatus, deleteEmployee } from "@/lib/store";
 
 function isAuthed(request: NextRequest): boolean {
@@ -13,6 +14,12 @@ export async function PATCH(
 ) {
   if (!isAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isMongoConfigured()) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 503 }
+    );
   }
 
   try {
@@ -47,6 +54,12 @@ export async function DELETE(
 ) {
   if (!isAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isMongoConfigured()) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 503 }
+    );
   }
 
   try {

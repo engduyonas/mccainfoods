@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
+import { isMongoConfigured } from "@/lib/mongodb";
 import { getAdminCredentials } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { username, password } = body;
+
+    if (!isMongoConfigured()) {
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 503 }
+      );
+    }
 
     const creds = await getAdminCredentials();
 

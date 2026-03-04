@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
+import { isMongoConfigured } from "@/lib/mongodb";
 import { getAllEmployees, createEmployee } from "@/lib/store";
 
 function isAuthed(request: NextRequest): boolean {
@@ -8,6 +9,12 @@ function isAuthed(request: NextRequest): boolean {
 }
 
 export async function GET() {
+  if (!isMongoConfigured()) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 503 }
+    );
+  }
   try {
     const employees = await getAllEmployees();
     return NextResponse.json(employees, {
@@ -26,6 +33,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   if (!isAuthed(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isMongoConfigured()) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 503 }
+    );
   }
 
   try {

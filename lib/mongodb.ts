@@ -21,6 +21,10 @@ function getClientPromise(): Promise<MongoClient> {
   return new MongoClient(uri).connect();
 }
 
+export function isMongoConfigured(): boolean {
+  return Boolean(process.env.MONGODB_URI);
+}
+
 export async function getDb(): Promise<Db> {
   const client = await getClientPromise();
   return client.db();
