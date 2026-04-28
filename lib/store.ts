@@ -26,6 +26,11 @@ function invalidateCache(): void {
   if (cacheTTLTimer) { clearTimeout(cacheTTLTimer); cacheTTLTimer = null; }
 }
 
+/** Exported for invite flow after direct Mongo writes. */
+export function invalidateEmployeesCache(): void {
+  invalidateCache();
+}
+
 // ═══════════════════════════════════════════════════
 //  Employee CRUD — MongoDB
 // ═══════════════════════════════════════════════════

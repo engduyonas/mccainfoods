@@ -27,9 +27,9 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    if (!status || !["pending", "approved", "rejected"].includes(status)) {
+    if (!status || !["pending", "approved", "rejected", "submitted"].includes(status)) {
       return NextResponse.json(
-        { error: "Invalid status. Must be pending, approved, or rejected" },
+        { error: "Invalid status. Must be pending, approved, rejected, or submitted" },
         { status: 400 }
       );
     }

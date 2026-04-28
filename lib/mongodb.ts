@@ -25,6 +25,10 @@ export function isMongoConfigured(): boolean {
   return Boolean(process.env.MONGODB_URI);
 }
 
+export async function getMongoClient(): Promise<MongoClient> {
+  return getClientPromise();
+}
+
 export async function getDb(): Promise<Db> {
   const client = await getClientPromise();
   return client.db();
