@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/app/components/AuthProvider";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 // Module-level cache so the admin table doesn't re-fetch on every visit
 let cachedAdminEmployees: Employee[] | null = null;
@@ -50,48 +51,16 @@ const STATUS_CONFIG: Record<string, { row: string; badge: string; dot: string; i
     cardIcon: "bg-red-100 text-red-600",
     mobileBg: "bg-red-50 border-red-100",
   },
+  submitted: {
+    row: "hover:bg-sky-50/60",
+    badge: "bg-sky-50 text-sky-800 border-sky-200",
+    dot: "bg-sky-500",
+    icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    cardBg: "from-sky-500 to-indigo-500",
+    cardIcon: "bg-sky-100 text-sky-700",
+    mobileBg: "bg-sky-50 border-sky-100",
+  },
 };
-
-const COUNTRY_CODES = [
-  { code: "+1", country: "US", flag: "\u{1F1FA}\u{1F1F8}", label: "United States" },
-  { code: "+1", country: "CA", flag: "\u{1F1E8}\u{1F1E6}", label: "Canada" },
-  { code: "+44", country: "GB", flag: "\u{1F1EC}\u{1F1E7}", label: "United Kingdom" },
-  { code: "+61", country: "AU", flag: "\u{1F1E6}\u{1F1FA}", label: "Australia" },
-  { code: "+64", country: "NZ", flag: "\u{1F1F3}\u{1F1FF}", label: "New Zealand" },
-  { code: "+33", country: "FR", flag: "\u{1F1EB}\u{1F1F7}", label: "France" },
-  { code: "+49", country: "DE", flag: "\u{1F1E9}\u{1F1EA}", label: "Germany" },
-  { code: "+31", country: "NL", flag: "\u{1F1F3}\u{1F1F1}", label: "Netherlands" },
-  { code: "+32", country: "BE", flag: "\u{1F1E7}\u{1F1EA}", label: "Belgium" },
-  { code: "+48", country: "PL", flag: "\u{1F1F5}\u{1F1F1}", label: "Poland" },
-  { code: "+39", country: "IT", flag: "\u{1F1EE}\u{1F1F9}", label: "Italy" },
-  { code: "+34", country: "ES", flag: "\u{1F1EA}\u{1F1F8}", label: "Spain" },
-  { code: "+351", country: "PT", flag: "\u{1F1F5}\u{1F1F9}", label: "Portugal" },
-  { code: "+43", country: "AT", flag: "\u{1F1E6}\u{1F1F9}", label: "Austria" },
-  { code: "+41", country: "CH", flag: "\u{1F1E8}\u{1F1ED}", label: "Switzerland" },
-  { code: "+420", country: "CZ", flag: "\u{1F1E8}\u{1F1FF}", label: "Czech Republic" },
-  { code: "+421", country: "SK", flag: "\u{1F1F8}\u{1F1F0}", label: "Slovakia" },
-  { code: "+30", country: "GR", flag: "\u{1F1EC}\u{1F1F7}", label: "Greece" },
-  { code: "+46", country: "SE", flag: "\u{1F1F8}\u{1F1EA}", label: "Sweden" },
-  { code: "+358", country: "FI", flag: "\u{1F1EB}\u{1F1EE}", label: "Finland" },
-  { code: "+36", country: "HU", flag: "\u{1F1ED}\u{1F1FA}", label: "Hungary" },
-  { code: "+91", country: "IN", flag: "\u{1F1EE}\u{1F1F3}", label: "India" },
-  { code: "+81", country: "JP", flag: "\u{1F1EF}\u{1F1F5}", label: "Japan" },
-  { code: "+886", country: "TW", flag: "\u{1F1F9}\u{1F1FC}", label: "Taiwan" },
-  { code: "+60", country: "MY", flag: "\u{1F1F2}\u{1F1FE}", label: "Malaysia" },
-  { code: "+86", country: "CN", flag: "\u{1F1E8}\u{1F1F3}", label: "China" },
-  { code: "+27", country: "ZA", flag: "\u{1F1FF}\u{1F1E6}", label: "South Africa" },
-  { code: "+55", country: "BR", flag: "\u{1F1E7}\u{1F1F7}", label: "Brazil" },
-  { code: "+54", country: "AR", flag: "\u{1F1E6}\u{1F1F7}", label: "Argentina" },
-  { code: "+57", country: "CO", flag: "\u{1F1E8}\u{1F1F4}", label: "Colombia" },
-  { code: "+52", country: "MX", flag: "\u{1F1F2}\u{1F1FD}", label: "Mexico" },
-  { code: "+251", country: "ET", flag: "\u{1F1EA}\u{1F1F9}", label: "Ethiopia" },
-  { code: "+971", country: "AE", flag: "\u{1F1E6}\u{1F1EA}", label: "UAE" },
-  { code: "+966", country: "SA", flag: "\u{1F1F8}\u{1F1E6}", label: "Saudi Arabia" },
-  { code: "+90", country: "TR", flag: "\u{1F1F9}\u{1F1F7}", label: "Turkey" },
-  { code: "+234", country: "NG", flag: "\u{1F1F3}\u{1F1EC}", label: "Nigeria" },
-  { code: "+254", country: "KE", flag: "\u{1F1F0}\u{1F1EA}", label: "Kenya" },
-  { code: "+20", country: "EG", flag: "\u{1F1EA}\u{1F1EC}", label: "Egypt" },
-];
 
 interface FieldErrors {
   fullName?: string;
@@ -191,9 +160,24 @@ export default function AdminPage() {
   }, [employees, searchQuery, statusFilter]);
 
   const statusCounts = useMemo(() => {
-    const counts = { all: employees.length, pending: 0, approved: 0, rejected: 0 };
+    const counts = { all: employees.length, pending: 0, approved: 0, rejected: 0, submitted: 0 };
     employees.forEach((emp) => {
-      if (emp.status in counts) counts[emp.status as keyof typeof counts]++;
+      switch (emp.status) {
+        case "pending":
+          counts.pending++;
+          break;
+        case "approved":
+          counts.approved++;
+          break;
+        case "rejected":
+          counts.rejected++;
+          break;
+        case "submitted":
+          counts.submitted++;
+          break;
+        default:
+          break;
+      }
     });
     return counts;
   }, [employees]);
@@ -239,7 +223,7 @@ export default function AdminPage() {
     else if (an < 18) errors.age = "Must be 18+";
     else if (an > 100) errors.age = "Max 100";
     if (!photograph) errors.photograph = "Photo is required";
-    if (!formStatus || !["pending", "approved", "rejected"].includes(formStatus)) errors.status = "Select a valid status";
+    if (!formStatus || !["pending", "approved", "rejected", "submitted"].includes(formStatus)) errors.status = "Select a valid status";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -280,6 +264,12 @@ export default function AdminPage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
 
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteRawToken, setInviteRawToken] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteErr, setInviteErr] = useState("");
+  const [inviteCopied, setInviteCopied] = useState(false);
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError(""); setPwSuccess("");
@@ -307,6 +297,41 @@ export default function AdminPage() {
 
   const handleLogout = async () => { await logout(); router.push("/login"); };
   const getConfig = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+
+  const handleGenerateInvite = async () => {
+    setInviteErr("");
+    setInviteCopied(false);
+    setInviteBusy(true);
+    try {
+      const res = await fetch("/api/admin/apply-invitations", { method: "POST" });
+      const data = (await res.json()) as { url?: string; token?: string; error?: string };
+      if (!res.ok) {
+        setInviteErr(data.error || "Could not create invitation");
+        setInviteUrl("");
+        setInviteRawToken("");
+        return;
+      }
+      setInviteUrl(data.url || "");
+      setInviteRawToken(data.token || "");
+    } catch {
+      setInviteErr("Something went wrong");
+      setInviteUrl("");
+      setInviteRawToken("");
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
+  const handleCopyInviteUrl = async () => {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setInviteCopied(true);
+      window.setTimeout(() => setInviteCopied(false), 2500);
+    } catch {
+      setInviteErr("Could not copy to clipboard");
+    }
+  };
 
   const inputBase = "w-full px-3.5 py-3 border rounded-xl text-[15px] sm:text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-gray-400";
   const inputClass = (hasError: boolean) => `${inputBase} ${hasError ? "border-red-300 focus:ring-red-400 bg-red-50/30" : "border-gray-200 focus:ring-mccain-green/50 hover:border-gray-300"}`;
@@ -456,15 +481,19 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
         {/* ─── Status Cards ─── */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-5 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-5 sm:mb-8">
           {[
             { key: "all" as const, label: "Total", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z", iconClass: "bg-gradient-to-br from-mccain-green to-mccain-green-dark text-white" },
+            { key: "submitted" as const, label: "Submitted", icon: STATUS_CONFIG.submitted.icon, iconClass: STATUS_CONFIG.submitted.cardIcon },
             { key: "pending" as const, label: "Pending", icon: STATUS_CONFIG.pending.icon, iconClass: STATUS_CONFIG.pending.cardIcon },
             { key: "approved" as const, label: "Approved", icon: STATUS_CONFIG.approved.icon, iconClass: STATUS_CONFIG.approved.cardIcon },
             { key: "rejected" as const, label: "Rejected", icon: STATUS_CONFIG.rejected.icon, iconClass: STATUS_CONFIG.rejected.cardIcon },
           ].map((item) => {
             const isActive = statusFilter === item.key;
-            const bg = item.key !== "all" ? STATUS_CONFIG[item.key].cardBg : "from-mccain-green to-mccain-green-dark";
+            const bg =
+              item.key !== "all"
+                ? STATUS_CONFIG[item.key as keyof typeof STATUS_CONFIG]?.cardBg ?? "from-gray-400 to-gray-600"
+                : "from-mccain-green to-mccain-green-dark";
             return (
               <button
                 key={item.key}
@@ -490,6 +519,54 @@ export default function AdminPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* ─── Invite link generator ─── */}
+        <div className="mb-5 sm:mb-8 rounded-2xl sm:rounded-3xl border border-gray-100 bg-white p-5 sm:p-6 shadow-xl shadow-gray-200/40">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Invite-only registration</h2>
+              <p className="mt-1 max-w-xl text-xs text-gray-500 leading-relaxed">
+                Generate a one-time invitation link for an applicant. After a successful submission the link cannot be reused.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateInvite}
+              disabled={inviteBusy}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-mccain-green px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mccain-green/20 hover:bg-mccain-green-dark disabled:opacity-50"
+            >
+              {inviteBusy ? "Generating..." : "Generate invitation link"}
+            </button>
+          </div>
+          {inviteErr && <p className="mt-3 text-xs text-red-600">{inviteErr}</p>}
+          {inviteUrl && (
+            <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="min-w-0 flex-1">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  Registration URL
+                </label>
+                <input
+                  readOnly
+                  value={inviteUrl}
+                  className="w-full truncate rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 font-mono text-xs text-gray-800 selection:bg-emerald-100"
+                  aria-readonly="true"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyInviteUrl}
+                className="shrink-0 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+              >
+                {inviteCopied ? "Copied!" : "Copy link"}
+              </button>
+            </div>
+          )}
+          {inviteRawToken && inviteUrl ? (
+            <p className="mt-4 text-[11px] text-gray-400 font-mono break-all" title="Technical reference">
+              Token: <span className="text-gray-600">{inviteRawToken}</span>
+            </p>
+          ) : null}
         </div>
 
         {/* ─── Toast ─── */}
@@ -577,6 +654,7 @@ export default function AdminPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Status *</label>
                       <select value={formStatus} onChange={(e) => { setFormStatus(e.target.value); if (fieldErrors.status) setFieldErrors((p) => ({ ...p, status: undefined })); }} className={`${inputClass(!!fieldErrors.status)} ${selectChevron}`}>
+                        <option value="submitted">Submitted</option>
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>
@@ -677,9 +755,12 @@ export default function AdminPage() {
 
             {/* Scrollable filter pills */}
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
-              {(["all", "pending", "approved", "rejected"] as const).map((status) => {
+              {(["all", "submitted", "pending", "approved", "rejected"] as const).map((status) => {
                 const isActive = statusFilter === status;
-                const dotColor = status === "all" ? "bg-gray-600" : (STATUS_CONFIG[status]?.dot || "bg-gray-400");
+                const dotColor =
+                  status === "all"
+                    ? "bg-gray-600"
+                    : (STATUS_CONFIG[status]?.dot || "bg-gray-400");
                 return (
                   <button
                     key={status}
@@ -758,6 +839,7 @@ export default function AdminPage() {
                           <td className="px-4 py-4 text-sm text-gray-600">{emp.age}</td>
                           <td className="px-4 py-4">
                             <select value={emp.status} onChange={(e) => handleStatusChange(emp.id, e.target.value)} className={`text-xs font-semibold border rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-mccain-green/40 ${selectChevron} pr-7 cursor-pointer ${cfg.badge}`}>
+                              <option value="submitted">Submitted</option>
                               <option value="pending">Pending</option>
                               <option value="approved">Approved</option>
                               <option value="rejected">Rejected</option>
@@ -820,6 +902,7 @@ export default function AdminPage() {
                             onChange={(e) => handleStatusChange(emp.id, e.target.value)}
                             className={`flex-1 text-xs font-semibold border rounded-xl px-3 py-2.5 focus:outline-none ${selectChevron} pr-8 ${cfg.badge}`}
                           >
+                            <option value="submitted">Set Submitted</option>
                             <option value="pending">Set Pending</option>
                             <option value="approved">Set Approved</option>
                             <option value="rejected">Set Rejected</option>
