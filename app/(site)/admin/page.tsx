@@ -522,11 +522,11 @@ export default function AdminPage() {
         </div>
 
         {/* ─── Invite link generator ─── */}
-        <div className="mb-5 sm:mb-8 rounded-2xl sm:rounded-3xl border border-gray-100 bg-white p-5 sm:p-6 shadow-xl shadow-gray-200/40">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-gray-900">Invite-only registration</h2>
-              <p className="mt-1 max-w-xl text-xs text-gray-500 leading-relaxed">
+        <div className="mb-5 sm:mb-8 rounded-2xl sm:rounded-3xl border border-gray-200/60 bg-white px-5 py-5 sm:px-7 sm:py-6 shadow-sm shadow-gray-900/5">
+          <div className="flex flex-col gap-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+            <div className="min-w-0 flex-1 lg:pr-2">
+              <h2 className="text-base font-bold tracking-tight text-gray-900">Invite-only registration</h2>
+              <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
                 Generate a one-time invitation link for an applicant. After a successful submission the link cannot be reused.
               </p>
             </div>
@@ -534,9 +534,24 @@ export default function AdminPage() {
               type="button"
               onClick={handleGenerateInvite}
               disabled={inviteBusy}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-mccain-green px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mccain-green/20 hover:bg-mccain-green-dark disabled:opacity-50"
+              className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-mccain-green px-5 text-[13px] font-semibold text-white shadow-sm shadow-gray-900/10 transition hover:bg-mccain-green-dark hover:shadow-md active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:h-9 sm:w-auto sm:px-6 sm:text-sm"
             >
-              {inviteBusy ? "Generating..." : "Generate invitation link"}
+              {inviteBusy ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4 shrink-0 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.06 7.288" />
+                  </svg>
+                  Generate invitation link
+                </>
+              )}
             </button>
           </div>
           {inviteErr && <p className="mt-3 text-xs text-red-600">{inviteErr}</p>}
