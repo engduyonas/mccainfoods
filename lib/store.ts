@@ -114,6 +114,30 @@ export async function updateEmployeeStatus(id: string, status: string): Promise<
   return result ? toEmployee(result) : null;
 }
 
+export async function updateEmployeeFull(
+  id: string,
+  data: Omit<Employee, "id" | "createdAt">
+): Promise<Employee | null> {
+  const db = await getDb();
+  const result = await db.collection<EmployeeDoc>("employees").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    {
+      $set: {
+        fullName: data.fullName,
+        phoneNumber: data.phoneNumber,
+        passportNumber: data.passportNumber,
+        gender: data.gender,
+        photograph: data.photograph,
+        age: data.age,
+        status: data.status,
+      },
+    },
+    { returnDocument: "after" }
+  );
+  invalidateCache();
+  return result ? toEmployee(result) : null;
+}
+
 export async function deleteEmployee(id: string): Promise<boolean> {
   const db = await getDb();
   const result = await db.collection("employees").deleteOne({ _id: new ObjectId(id) });
