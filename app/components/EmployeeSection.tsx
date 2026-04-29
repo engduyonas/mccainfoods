@@ -78,18 +78,25 @@ export default function EmployeeSection() {
     fetchEmployees();
   }, []);
 
+  /** Invite-only applications stay in admin; never list `submitted` on the public home page. */
+  const publicEmployees = useMemo(
+    () => employees.filter((e) => e.status !== "submitted"),
+    [employees]
+  );
+
   const visibleEmployees = useMemo(() => {
-    const filtered = activeFilter === "all" ? employees : employees.filter((e) => e.status === activeFilter);
+    const filtered =
+      activeFilter === "all" ? publicEmployees : publicEmployees.filter((e) => e.status === activeFilter);
     return filtered.slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
-  }, [employees, activeFilter]);
+  }, [publicEmployees, activeFilter]);
 
   const counts = useMemo(() => {
-    const c = { all: employees.length, pending: 0, approved: 0, rejected: 0 };
-    employees.forEach((e) => {
+    const c = { all: publicEmployees.length, pending: 0, approved: 0, rejected: 0 };
+    publicEmployees.forEach((e) => {
       if (e.status in c) c[e.status as keyof typeof c]++;
     });
     return c;
-  }, [employees]);
+  }, [publicEmployees]);
 
   const dotColors: Record<string, string> = {
     all: "bg-mccain-green",
@@ -152,7 +159,7 @@ export default function EmployeeSection() {
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : employees.length === 0 ? (
+        ) : publicEmployees.length === 0 ? (
           /* Empty state */
           <div className="text-center py-14 sm:py-20">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
