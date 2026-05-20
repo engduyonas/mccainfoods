@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local Cloudflare Workers preview (wrangler / opennextjs-cloudflare preview)
+NEXTJS_ENV=development
+
+# Required for admin login, employee records, and applications
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/mccainfoods
+
+# Optional: canonical public URL for invite links and OG metadata
+# NEXT_PUBLIC_SITE_URL=https://your-domain.example
