@@ -7,5 +7,5 @@ NEXTJS_ENV=development
 # Required for admin login, employee records, and applications
 MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/mccainfoods
 
-# Optional: canonical public URL for invite links and OG metadata
-# NEXT_PUBLIC_SITE_URL=https://your-domain.example
+# Public URL for invite links (match wrangler.jsonc vars after subdomain is set to "mccain")
+NEXT_PUBLIC_SITE_URL=https://mccainfoods.mccain.workers.dev

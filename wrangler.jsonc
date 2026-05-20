@@ -1,10 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Set your Cloudflare account ID from dash.cloudflare.com (right sidebar) after `wrangler login`
-   "account_id": "566a1a7827a9a9a27e3e05d87245167f",
+  "account_id": "566a1a7827a9a9a27e3e05d87245167f",
+  // Dashboard: Workers & Pages → "Your subdomain" → Change → mccain (no personal name)
+  // Live URL: https://mccainfoods.mccain.workers.dev
   "main": ".open-next/worker.js",
   "name": "mccainfoods",
   "compatibility_date": "2026-05-20",
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://mccainfoods.mccain.workers.dev"
+  },
   "compatibility_flags": [
     "nodejs_compat",
     "global_fetch_strictly_public"
