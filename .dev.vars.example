@@ -1,6 +1,9 @@
 # Copy to .dev.vars for local Cloudflare Workers preview (wrangler / opennextjs-cloudflare preview)
 NEXTJS_ENV=development
 
+# Optional: force deploy to your account (also set account_id in wrangler.jsonc)
+# CLOUDFLARE_ACCOUNT_ID=your_account_id
+
 # Required for admin login, employee records, and applications
 MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/mccainfoods
 

@@ -1,5 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Set your Cloudflare account ID from dash.cloudflare.com (right sidebar) after `wrangler login`
+   "account_id": "566a1a7827a9a9a27e3e05d87245167f",
   "main": ".open-next/worker.js",
   "name": "mccainfoods",
   "compatibility_date": "2026-05-20",
