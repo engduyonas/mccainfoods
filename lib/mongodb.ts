@@ -10,15 +10,20 @@ function getClientPromise(): Promise<MongoClient> {
     throw new Error("MONGODB_URI environment variable is not set");
   }
 
-  if (process.env.NODE_ENV === "development") {
-    // Reuse connection across HMR in development
-    if (!globalWithMongo._mongoClientPromise) {
-      globalWithMongo._mongoClientPromise = new MongoClient(uri).connect();
-    }
-    return globalWithMongo._mongoClientPromise;
+  // Reuse one client per Worker isolate (required on Cloudflare Workers).
+  if (!globalWithMongo._mongoClientPromise) {
+    const client = new MongoClient(uri, {
+      maxPoolSize: 5,
+      minPoolSize: 0,
+      maxIdleTimeMS: 10_000,
+      serverSelectionTimeoutMS: 10_000,
+      connectTimeoutMS: 10_000,
+      socketTimeoutMS: 30_000,
+    });
+    globalWithMongo._mongoClientPromise = client.connect();
   }
 
-  return new MongoClient(uri).connect();
+  return globalWithMongo._mongoClientPromise;
 }
 
 export function isMongoConfigured(): boolean {

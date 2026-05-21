@@ -3,6 +3,8 @@ import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
 import { isMongoConfigured } from "@/lib/mongodb";
 import { getAllEmployees, createEmployee } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 function isAuthed(request: NextRequest): boolean {
   const token = request.cookies.get(AUTH_COOKIE_NAME);
   return token?.value === AUTH_TOKEN_VALUE;
@@ -19,7 +21,7 @@ export async function GET() {
     const employees = await getAllEmployees();
     return NextResponse.json(employees, {
       headers: {
-        "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+        "Cache-Control": "private, no-store, must-revalidate",
       },
     });
   } catch {

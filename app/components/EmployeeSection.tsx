@@ -64,7 +64,7 @@ export default function EmployeeSection() {
 
     async function fetchEmployees() {
       try {
-        const res = await fetch("/api/employees");
+        const res = await fetch("/api/employees", { cache: "no-store" });
         const data = await res.json();
         if (Array.isArray(data)) {
           cachedEmployees = data;

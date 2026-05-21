@@ -1,7 +1,6 @@
 import { randomBytes } from "crypto";
 import { getDb, getMongoClient } from "@/lib/mongodb";
 import type { ValidatedApplicationInput } from "@/lib/applicationValidation";
-import { invalidateEmployeesCache } from "@/lib/store";
 
 const INVITES = "apply_invitations";
 const EMPLOYEES = "employees";
@@ -110,7 +109,6 @@ export async function consumeInviteAndCreateApplicant(
 > {
   try {
     await consumeWithTransaction(token, value);
-    invalidateEmployeesCache();
     return { ok: true };
   } catch (e: unknown) {
     if (isInviteInvalidError(e)) {
@@ -119,7 +117,6 @@ export async function consumeInviteAndCreateApplicant(
     if (isTransactionUnsupportedError(e)) {
       const fb = await consumeWithoutTransaction(token, value);
       if (fb === "ok") {
-        invalidateEmployeesCache();
         return { ok: true };
       }
       if (fb === "invalid_invite") {

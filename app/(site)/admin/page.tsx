@@ -135,12 +135,14 @@ export default function AdminPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/employees");
+      const res = await fetch("/api/employees", { cache: "no-store" });
       const data = await res.json();
       if (Array.isArray(data)) {
         cachedAdminEmployees = data;
         adminCacheTimestamp = Date.now();
         setEmployeesRaw(data);
+      } else if (!res.ok) {
+        setError((data as { error?: string }).error || "Could not load applicants");
       }
     } catch { /* silently handled */ } finally {
       setLoading(false);
