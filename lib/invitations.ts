@@ -1,26 +1,28 @@
 import { randomBytes } from "crypto";
-import { getDb, getMongoClient } from "@/lib/mongodb";
+import { withClient, withDb } from "@/lib/mongodb";
 import type { ValidatedApplicationInput } from "@/lib/applicationValidation";
 
 const INVITES = "apply_invitations";
 const EMPLOYEES = "employees";
 
 export async function createApplyInvitation(): Promise<{ token: string; createdAt: string }> {
-  const db = await getDb();
-  const token = randomBytes(24).toString("base64url");
-  const createdAt = new Date().toISOString();
-  await db.collection(INVITES).insertOne({ token, createdAt });
-  return { token, createdAt };
+  return withDb(async (db) => {
+    const token = randomBytes(24).toString("base64url");
+    const createdAt = new Date().toISOString();
+    await db.collection(INVITES).insertOne({ token, createdAt });
+    return { token, createdAt };
+  });
 }
 
 export async function findApplyInvitation(
   token: string
 ): Promise<{ token: string; createdAt: string } | null> {
-  const db = await getDb();
-  const doc = await db
-    .collection<{ token: string; createdAt: string }>(INVITES)
-    .findOne({ token });
-  return doc;
+  return withDb(async (db) => {
+    const doc = await db
+      .collection<{ token: string; createdAt: string }>(INVITES)
+      .findOne({ token });
+    return doc;
+  });
 }
 
 function employeeDoc(value: ValidatedApplicationInput) {
@@ -58,42 +60,44 @@ async function consumeWithTransaction(
   token: string,
   value: ValidatedApplicationInput
 ): Promise<void> {
-  const client = await getMongoClient();
-  const db = client.db();
-  const session = client.startSession();
-  try {
-    await session.withTransaction(async () => {
-      const removed = await db
-        .collection(INVITES)
-        .findOneAndDelete({ token }, { session });
-      if (!removed) {
-        throw new InviteInvalidError();
-      }
-      await db.collection(EMPLOYEES).insertOne(employeeDoc(value), { session });
-    });
-  } finally {
-    await session.endSession();
-  }
+  return withClient(async (client) => {
+    const db = client.db();
+    const session = client.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const removed = await db
+          .collection(INVITES)
+          .findOneAndDelete({ token }, { session });
+        if (!removed) {
+          throw new InviteInvalidError();
+        }
+        await db.collection(EMPLOYEES).insertOne(employeeDoc(value), { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+  });
 }
 
 async function consumeWithoutTransaction(
   token: string,
   value: ValidatedApplicationInput
 ): Promise<"ok" | "invalid_invite" | "insert_failed"> {
-  const client = await getMongoClient();
-  const db = client.db();
-  const removed = await db.collection(INVITES).findOneAndDelete({ token });
-  if (!removed) return "invalid_invite";
-  try {
-    await db.collection(EMPLOYEES).insertOne(employeeDoc(value));
-    return "ok";
-  } catch {
-    await db.collection(INVITES).insertOne({
-      token: removed.token as string,
-      createdAt: removed.createdAt as string,
-    });
-    return "insert_failed";
-  }
+  return withClient(async (client) => {
+    const db = client.db();
+    const removed = await db.collection(INVITES).findOneAndDelete({ token });
+    if (!removed) return "invalid_invite";
+    try {
+      await db.collection(EMPLOYEES).insertOne(employeeDoc(value));
+      return "ok";
+    } catch {
+      await db.collection(INVITES).insertOne({
+        token: removed.token as string,
+        createdAt: removed.createdAt as string,
+      });
+      return "insert_failed";
+    }
+  });
 }
 
 /**

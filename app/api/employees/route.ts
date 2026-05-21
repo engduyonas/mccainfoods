@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/employeesApi";
 import { isMongoConfigured } from "@/lib/mongodb";
-import { createEmployee, getEmployeeStatusCounts, listEmployees } from "@/lib/store";
+import { createEmployee, listEmployeesWithCounts } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -30,21 +30,23 @@ export async function GET(request: NextRequest) {
     const publicOnly = searchParams.get("public") === "1";
     const q = searchParams.get("q") ?? "";
 
-    const [list, counts] = await Promise.all([
-      listEmployees({
+    const includeCounts = searchParams.get("counts") !== "0";
+
+    const result = await listEmployeesWithCounts(
+      {
         page,
         pageSize: limit,
         status: status === "all" ? undefined : status,
         excludeSubmitted: publicOnly,
         search: q,
-      }),
-      getEmployeeStatusCounts(publicOnly),
-    ]);
-
-    return NextResponse.json(
-      { ...list, counts },
-      { headers: { "Cache-Control": "private, no-store, must-revalidate" } }
+      },
+      publicOnly,
+      includeCounts
     );
+
+    return NextResponse.json(result, {
+      headers: { "Cache-Control": "private, no-store, must-revalidate" },
+    });
   } catch {
     return NextResponse.json({ error: "Failed to fetch applicants" }, { status: 500 });
   }

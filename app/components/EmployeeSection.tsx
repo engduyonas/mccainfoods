@@ -48,30 +48,67 @@ export default function EmployeeSection() {
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<EmployeeStatusCounts>(EMPTY_COUNTS);
 
-  const loadPage = useCallback(async (nextPage: number, status: string) => {
+  const loadPage = useCallback(async (nextPage: number, status: string, refreshCounts = false) => {
     setLoading(true);
     setLoadError("");
-    try {
-      const res = await fetch(
-        employeesApiUrl({ page: nextPage, pageSize: DEFAULT_PAGE_SIZE, status, publicOnly: true }),
-        { cache: "no-store" }
-      );
-      const data = (await res.json()) as EmployeeListResponse | { error?: string };
-      if (!res.ok || !("items" in data)) {
-        setLoadError(("error" in data && data.error) || "Could not load applicants");
+
+    const needCounts = refreshCounts || nextPage === 1;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          employeesApiUrl({
+            page: nextPage,
+            pageSize: DEFAULT_PAGE_SIZE,
+            status,
+            publicOnly: true,
+            includeCounts: needCounts,
+          }),
+          { cache: "no-store" }
+        );
+        const text = await res.text();
+        let data: EmployeeListResponse | { error?: string };
+        try {
+          data = JSON.parse(text) as EmployeeListResponse | { error?: string };
+        } catch {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+            continue;
+          }
+          setLoadError("Could not load applicants. Please try again.");
+          setEmployees([]);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok || !("items" in data)) {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+            continue;
+          }
+          setLoadError(("error" in data && data.error) || "Could not load applicants");
+          setEmployees([]);
+          setLoading(false);
+          return;
+        }
+
+        setEmployees(data.items);
+        setPage(data.page);
+        setTotalPages(data.totalPages);
+        setTotal(data.total);
+        if (needCounts && data.counts) setCounts(data.counts);
+        setLoading(false);
+        return;
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
+        setLoadError("Could not load applicants. Please try again.");
         setEmployees([]);
+        setLoading(false);
         return;
       }
-      setEmployees(data.items);
-      setPage(data.page);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
-      setCounts(data.counts);
-    } catch {
-      setLoadError("Could not load applicants. Please try again.");
-      setEmployees([]);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -142,7 +179,7 @@ export default function EmployeeSection() {
             <p className="text-sm font-medium text-red-600 mb-2">{loadError}</p>
             <button
               type="button"
-              onClick={() => loadPage(page, activeFilter)}
+              onClick={() => loadPage(page, activeFilter, true)}
               className="text-sm font-semibold text-mccain-green hover:underline"
             >
               Retry

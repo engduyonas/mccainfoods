@@ -1,5 +1,4 @@
-import Image from "next/image";
-import { employeePhotoUrl } from "@/lib/employeePhoto";
+import EmployeePhoto from "@/app/components/EmployeePhoto";
 
 interface EmployeeCardProps {
   id: string;
@@ -59,11 +58,9 @@ export default function EmployeeCard({
 
       {/* Photo */}
       <div className="relative h-32 sm:h-48 bg-gradient-to-br from-mccain-gray to-gray-200 overflow-hidden">
-        <Image
-          src={employeePhotoUrl(id)}
-          alt={fullName}
-          fill
-          unoptimized
+        <EmployeePhoto
+          id={id}
+          fullName={fullName}
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />

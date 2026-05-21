@@ -7,6 +7,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import { splitStoredPhone } from "@/lib/splitStoredPhone";
 import { employeePhotoUrl } from "@/lib/employeePhoto";
+import EmployeePhoto from "@/app/components/EmployeePhoto";
 import PaginationControls from "@/app/components/PaginationControls";
 import {
   ADMIN_PAGE_SIZE,
@@ -913,7 +914,7 @@ export default function AdminPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-100 ring-1 ring-gray-200 flex-shrink-0">
-                                <Image src={employeePhotoUrl(emp.id)} alt={emp.fullName} fill unoptimized className="object-cover" />
+                                <EmployeePhoto id={emp.id} fullName={emp.fullName} />
                               </div>
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{emp.fullName}</p>
@@ -966,7 +967,7 @@ export default function AdminPage() {
                         {/* Top row: Photo + Name + Status badge */}
                         <div className="flex items-center gap-3 mb-2.5">
                           <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 ring-1 ring-gray-200 flex-shrink-0">
-                            <Image src={employeePhotoUrl(emp.id)} alt={emp.fullName} fill unoptimized className="object-cover" />
+                            <EmployeePhoto id={emp.id} fullName={emp.fullName} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-[15px] text-gray-900 leading-tight truncate">{emp.fullName}</h3>

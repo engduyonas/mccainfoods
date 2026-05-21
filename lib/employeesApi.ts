@@ -37,6 +37,7 @@ export function employeesApiUrl(params: {
   status?: string;
   publicOnly?: boolean;
   q?: string;
+  includeCounts?: boolean;
 }): string {
   const search = new URLSearchParams();
   search.set("page", String(params.page));
@@ -44,5 +45,6 @@ export function employeesApiUrl(params: {
   if (params.status && params.status !== "all") search.set("status", params.status);
   if (params.publicOnly) search.set("public", "1");
   if (params.q?.trim()) search.set("q", params.q.trim());
+  if (params.includeCounts === false) search.set("counts", "0");
   return `/api/employees?${search.toString()}`;
 }
