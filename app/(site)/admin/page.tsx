@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/app/components/AuthProvider";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import { splitStoredPhone } from "@/lib/splitStoredPhone";
 import { employeePhotoUrl } from "@/lib/employeePhoto";
-
-// Module-level cache so the admin table doesn't re-fetch on every visit
-let cachedAdminEmployees: Employee[] | null = null;
-let adminCacheTimestamp = 0;
-const ADMIN_CACHE_TTL = 30_000; // 30 seconds
+import PaginationControls from "@/app/components/PaginationControls";
+import {
+  ADMIN_PAGE_SIZE,
+  employeesApiUrl,
+  type EmployeeListResponse,
+  type EmployeeStatusCounts,
+} from "@/lib/employeesApi";
 
 interface Employee {
   id: string;
@@ -94,19 +96,18 @@ function ErrorText({ msg }: { msg: string }) {
 }
 
 export default function AdminPage() {
-  const [employees, setEmployeesRaw] = useState<Employee[]>(cachedAdminEmployees ?? []);
-  const [loading, setLoading] = useState(cachedAdminEmployees === null);
-  const fetchedRef = useRef(false);
-
-  // Wrap setEmployees to also update the module-level cache
-  const setEmployees = useCallback((updater: Employee[] | ((prev: Employee[]) => Employee[])) => {
-    setEmployeesRaw((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      cachedAdminEmployees = next;
-      adminCacheTimestamp = Date.now();
-      return next;
-    });
-  }, []);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<EmployeeStatusCounts>({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    submitted: 0,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -128,64 +129,36 @@ export default function AdminPage() {
   const [formStatus, setFormStatus] = useState("pending");
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
 
-  const fetchEmployees = useCallback(async (force = false) => {
-    if (!force && cachedAdminEmployees && Date.now() - adminCacheTimestamp < ADMIN_CACHE_TTL) {
-      setEmployeesRaw(cachedAdminEmployees);
-      setLoading(false);
-      return;
-    }
+  const fetchEmployees = useCallback(async (nextPage: number, status: string, query: string) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/employees", { cache: "no-store" });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        cachedAdminEmployees = data;
-        adminCacheTimestamp = Date.now();
-        setEmployeesRaw(data);
+      const res = await fetch(
+        employeesApiUrl({ page: nextPage, pageSize: ADMIN_PAGE_SIZE, status, q: query }),
+        { cache: "no-store" }
+      );
+      const data = (await res.json()) as EmployeeListResponse | { error?: string };
+      if ("items" in data) {
+        setEmployees(data.items);
+        setPage(data.page);
+        setTotalPages(data.totalPages);
+        setTotal(data.total);
+        setStatusCounts(data.counts);
       } else if (!res.ok) {
-        setError((data as { error?: string }).error || "Could not load applicants");
+        setError(("error" in data && data.error) || "Could not load applicants");
       }
-    } catch { /* silently handled */ } finally {
+    } catch {
+      setError("Could not load applicants");
+    } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    fetchEmployees();
-  }, [fetchEmployees]);
-
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) => {
-      const matchesSearch = emp.fullName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || emp.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [employees, searchQuery, statusFilter]);
-
-  const statusCounts = useMemo(() => {
-    const counts = { all: employees.length, pending: 0, approved: 0, rejected: 0, submitted: 0 };
-    employees.forEach((emp) => {
-      switch (emp.status) {
-        case "pending":
-          counts.pending++;
-          break;
-        case "approved":
-          counts.approved++;
-          break;
-        case "rejected":
-          counts.rejected++;
-          break;
-        case "submitted":
-          counts.submitted++;
-          break;
-        default:
-          break;
-      }
-    });
-    return counts;
-  }, [employees]);
+    const timer = window.setTimeout(() => {
+      fetchEmployees(page, statusFilter, searchQuery);
+    }, searchQuery ? 300 : 0);
+    return () => window.clearTimeout(timer);
+  }, [page, statusFilter, searchQuery, fetchEmployees]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -256,11 +229,10 @@ export default function AdminPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          const updated = data as Employee;
-          setEmployees((prev) => prev.map((x) => (x.id === editingEmployeeId ? updated : x)));
           setSuccess("Applicant updated!");
           resetForm();
           setFormOpen(false);
+          fetchEmployees(page, statusFilter, searchQuery);
           setTimeout(() => setSuccess(""), 4000);
         } else {
           setError((data as { error?: string }).error || "Failed to update");
@@ -271,16 +243,16 @@ export default function AdminPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          const newApplicant = await res.json();
-          setEmployees((prev) => [newApplicant, ...prev]);
           setSuccess("Applicant added!");
           resetForm();
           setFormOpen(false);
+          setPage(1);
+          fetchEmployees(1, statusFilter, searchQuery);
           setTimeout(() => setSuccess(""), 4000);
         } else {
-          const data = await res.json();
-          setError(data.error || "Failed to add");
+          setError((data as { error?: string }).error || "Failed to add");
         }
       }
     } catch {
@@ -328,12 +300,22 @@ export default function AdminPage() {
   };
 
   const handleStatusChange = async (id: string, status: string) => {
-    try { const res = await fetch(`/api/employees/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); if (res.ok) setEmployees(prev => prev.map(e => e.id === id ? { ...e, status } : e)); } catch { /* silently handled */ }
+    try {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) fetchEmployees(page, statusFilter, searchQuery);
+    } catch { /* silently handled */ }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this applicant?")) return;
-    try { const res = await fetch(`/api/employees/${id}`, { method: "DELETE" }); if (res.ok) setEmployees(prev => prev.filter(e => e.id !== id)); } catch { /* silently handled */ }
+    try {
+      const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
+      if (res.ok) fetchEmployees(page, statusFilter, searchQuery);
+    } catch { /* silently handled */ }
   };
 
   // Change password state
@@ -581,7 +563,7 @@ export default function AdminPage() {
             return (
               <button
                 key={item.key}
-                onClick={() => setStatusFilter(item.key)}
+                onClick={() => { setPage(1); setStatusFilter(item.key); }}
                 className={`group relative overflow-hidden rounded-2xl p-3 sm:p-5 text-left transition-all duration-300 active:scale-95 ${
                   isActive
                     ? "bg-white ring-2 ring-mccain-green shadow-lg shadow-mccain-green/10"
@@ -694,7 +676,7 @@ export default function AdminPage() {
             {formOpen ? "Close Form" : "New Applicant"}
           </button>
           <p className="text-sm text-gray-500">
-            <span className="font-semibold text-gray-900">{filteredEmployees.length}</span>
+            <span className="font-semibold text-gray-900">{total}</span>
             {(statusFilter !== "all" || searchQuery) && <> of <span className="font-semibold text-gray-900">{employees.length}</span></>}
             {" "}applicants
           </p>
@@ -849,11 +831,11 @@ export default function AdminPage() {
                 type="text"
                 placeholder="Search applicants..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setPage(1); setSearchQuery(e.target.value); }}
                 className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-2xl text-[15px] sm:text-sm bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-mccain-green/50 focus:border-transparent transition-all placeholder:text-gray-400"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center transition-colors">
+                <button onClick={() => { setPage(1); setSearchQuery(""); }} className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center transition-colors">
                   <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               )}
@@ -870,7 +852,7 @@ export default function AdminPage() {
                 return (
                   <button
                     key={status}
-                    onClick={() => setStatusFilter(status)}
+                    onClick={() => { setPage(1); setStatusFilter(status); }}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap capitalize active:scale-95 flex-shrink-0 ${
                       isActive
                         ? "bg-mccain-green text-white shadow-sm"
@@ -889,7 +871,7 @@ export default function AdminPage() {
 
             {/* Mobile result count */}
             <p className="text-xs text-gray-400 sm:hidden">
-              {filteredEmployees.length}{(statusFilter !== "all" || searchQuery) && ` of ${employees.length}`} applicants
+              {total} applicants
             </p>
           </div>
 
@@ -899,7 +881,7 @@ export default function AdminPage() {
               <div className="w-9 h-9 border-[3px] border-gray-200 border-t-mccain-green rounded-full animate-spin" />
               <p className="text-sm text-gray-400">Loading...</p>
             </div>
-          ) : filteredEmployees.length === 0 ? (
+          ) : employees.length === 0 ? (
             <div className="p-10 sm:p-16 text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center">
                 <Icon d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400" />
@@ -924,7 +906,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredEmployees.map((emp) => {
+                    {employees.map((emp) => {
                       const cfg = getConfig(emp.status);
                       return (
                         <tr key={emp.id} className={`transition-colors duration-150 ${cfg.row}`}>
@@ -976,7 +958,7 @@ export default function AdminPage() {
 
               {/* ─── Mobile Cards (polished) ─── */}
               <div className="md:hidden">
-                {filteredEmployees.map((emp, idx) => {
+                {employees.map((emp, idx) => {
                   const cfg = getConfig(emp.status);
                   return (
                     <div key={emp.id} className={`${idx > 0 ? "border-t border-gray-100" : ""}`}>
@@ -1046,6 +1028,18 @@ export default function AdminPage() {
                 })}
               </div>
             </>
+          )}
+          {!loading && employees.length > 0 && (
+            <div className="px-3 sm:px-6 lg:px-8 pb-4">
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={ADMIN_PAGE_SIZE}
+                loading={loading}
+                onPageChange={setPage}
+              />
+            </div>
           )}
         </div>
       </div>

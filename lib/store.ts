@@ -43,14 +43,116 @@ function toEmployee(doc: EmployeeDoc): Employee {
   };
 }
 
-export async function getAllEmployees(): Promise<Employee[]> {
+export interface EmployeeListOptions {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  excludeSubmitted?: boolean;
+  search?: string;
+}
+
+export interface EmployeeListResult {
+  items: Employee[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface EmployeeStatusCounts {
+  all: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  submitted: number;
+}
+
+function docToEmployeeSummary(doc: EmployeeDoc): Employee {
+  return { ...toEmployee({ ...doc, photograph: "" }), photograph: "" };
+}
+
+function buildEmployeeFilter(options: Pick<EmployeeListOptions, "status" | "excludeSubmitted" | "search">) {
+  const filter: Record<string, unknown> = {};
+
+  if (options.excludeSubmitted) {
+    filter.status = { $ne: "submitted" };
+  }
+  if (options.status && options.status !== "all") {
+    filter.status = options.status;
+  }
+  if (options.search?.trim()) {
+    filter.fullName = { $regex: options.search.trim(), $options: "i" };
+  }
+
+  return filter;
+}
+
+export async function listEmployees(options: EmployeeListOptions = {}): Promise<EmployeeListResult> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.min(50, Math.max(1, options.pageSize ?? 12));
+  const filter = buildEmployeeFilter(options);
   const db = await getDb();
-  const docs = await db
+  const col = db.collection<EmployeeDoc>("employees");
+
+  const [total, docs] = await Promise.all([
+    col.countDocuments(filter),
+    col
+      .find(filter, { projection: { photograph: 0 } })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray(),
+  ]);
+
+  return {
+    items: docs.map(docToEmployeeSummary),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize) || 1),
+  };
+}
+
+export async function getEmployeeStatusCounts(excludeSubmitted = false): Promise<EmployeeStatusCounts> {
+  const db = await getDb();
+  const match = excludeSubmitted ? { status: { $ne: "submitted" } } : {};
+  const rows = await db
     .collection<EmployeeDoc>("employees")
-    .find({}, { projection: { photograph: 0 } })
-    .sort({ createdAt: -1 })
+    .aggregate<{ _id: string; count: number }>([
+      { $match: match },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ])
     .toArray();
-  return docs.map((doc) => ({ ...toEmployee({ ...doc, photograph: "" }), photograph: "" }));
+
+  const counts: EmployeeStatusCounts = {
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    submitted: 0,
+  };
+
+  for (const row of rows) {
+    const key = row._id as keyof Omit<EmployeeStatusCounts, "all">;
+    if (key in counts) {
+      counts[key] = row.count;
+      if (excludeSubmitted || key !== "submitted") {
+        counts.all += row.count;
+      }
+    }
+  }
+
+  if (!excludeSubmitted) {
+    counts.all = counts.pending + counts.approved + counts.rejected + counts.submitted;
+  }
+
+  return counts;
+}
+
+/** @deprecated Use listEmployees instead */
+export async function getAllEmployees(): Promise<Employee[]> {
+  const result = await listEmployees({ page: 1, pageSize: 50 });
+  return result.items;
 }
 
 export async function getEmployeeById(id: string): Promise<Employee | null> {
