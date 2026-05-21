@@ -47,10 +47,24 @@ export async function getAllEmployees(): Promise<Employee[]> {
   const db = await getDb();
   const docs = await db
     .collection<EmployeeDoc>("employees")
-    .find()
+    .find({}, { projection: { photograph: 0 } })
     .sort({ createdAt: -1 })
     .toArray();
-  return docs.map(toEmployee);
+  return docs.map((doc) => ({ ...toEmployee({ ...doc, photograph: "" }), photograph: "" }));
+}
+
+export async function getEmployeeById(id: string): Promise<Employee | null> {
+  const db = await getDb();
+  const doc = await db.collection<EmployeeDoc>("employees").findOne({ _id: new ObjectId(id) });
+  return doc ? toEmployee(doc) : null;
+}
+
+export async function getEmployeePhotograph(id: string): Promise<string | null> {
+  const db = await getDb();
+  const doc = await db
+    .collection<Pick<EmployeeDoc, "photograph">>("employees")
+    .findOne({ _id: new ObjectId(id) }, { projection: { photograph: 1 } });
+  return doc?.photograph ?? null;
 }
 
 export async function createEmployee(data: Omit<Employee, "id" | "createdAt">): Promise<Employee> {

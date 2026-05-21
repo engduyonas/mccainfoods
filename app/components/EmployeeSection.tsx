@@ -181,11 +181,11 @@ export default function EmployeeSection() {
             {visibleEmployees.map((employee) => (
               <EmployeeCard
                 key={employee.id}
+                id={employee.id}
                 fullName={employee.fullName}
                 phoneNumber={employee.phoneNumber}
                 passportNumber={employee.passportNumber}
                 gender={employee.gender}
-                photograph={employee.photograph}
                 age={employee.age}
                 status={employee.status}
               />

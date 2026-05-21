@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useAuth } from "@/app/components/AuthProvider";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import { splitStoredPhone } from "@/lib/splitStoredPhone";
+import { employeePhotoUrl } from "@/lib/employeePhoto";
 
 // Module-level cache so the admin table doesn't re-fetch on every visit
 let cachedAdminEmployees: Employee[] | null = null;
@@ -289,7 +290,7 @@ export default function AdminPage() {
     }
   };
 
-  const startEditApplicant = (emp: Employee) => {
+  const startEditApplicant = async (emp: Employee) => {
     setEditingEmployeeId(emp.id);
     setFullName(emp.fullName);
     const { countryCode: cc, phoneLocal: pl } = splitStoredPhone(emp.phoneNumber);
@@ -299,12 +300,26 @@ export default function AdminPage() {
     setGender(emp.gender);
     setAge(String(emp.age));
     setFormStatus(emp.status);
-    setPhotograph(emp.photograph);
-    setPhotoPreview(emp.photograph);
     setFieldErrors({});
     setError("");
     setSuccess("");
     setFormOpen(true);
+
+    try {
+      const res = await fetch(`/api/employees/${emp.id}`, { cache: "no-store" });
+      const data = (await res.json()) as Employee;
+      if (res.ok && data.photograph) {
+        setPhotograph(data.photograph);
+        setPhotoPreview(data.photograph);
+      } else {
+        setPhotograph("");
+        setPhotoPreview(employeePhotoUrl(emp.id));
+      }
+    } catch {
+      setPhotograph("");
+      setPhotoPreview(employeePhotoUrl(emp.id));
+    }
+
     if (typeof window !== "undefined") {
       requestAnimationFrame(() => {
         document.getElementById("admin-applicant-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -916,7 +931,7 @@ export default function AdminPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-100 ring-1 ring-gray-200 flex-shrink-0">
-                                <Image src={emp.photograph} alt={emp.fullName} fill className="object-cover" />
+                                <Image src={employeePhotoUrl(emp.id)} alt={emp.fullName} fill unoptimized className="object-cover" />
                               </div>
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{emp.fullName}</p>
@@ -969,7 +984,7 @@ export default function AdminPage() {
                         {/* Top row: Photo + Name + Status badge */}
                         <div className="flex items-center gap-3 mb-2.5">
                           <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 ring-1 ring-gray-200 flex-shrink-0">
-                            <Image src={emp.photograph} alt={emp.fullName} fill className="object-cover" />
+                            <Image src={employeePhotoUrl(emp.id)} alt={emp.fullName} fill unoptimized className="object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-[15px] text-gray-900 leading-tight truncate">{emp.fullName}</h3>

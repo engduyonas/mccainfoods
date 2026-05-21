@@ -1,11 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_VALUE } from "@/lib/auth";
 import { isMongoConfigured } from "@/lib/mongodb";
-import { updateEmployeeFull, updateEmployeeStatus, deleteEmployee } from "@/lib/store";
+import {
+  getEmployeeById,
+  updateEmployeeFull,
+  updateEmployeeStatus,
+  deleteEmployee,
+} from "@/lib/store";
+
+export const dynamic = "force-dynamic";
 
 function isAuthed(request: NextRequest): boolean {
   const token = request.cookies.get(AUTH_COOKIE_NAME);
   return token?.value === AUTH_TOKEN_VALUE;
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAuthed(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isMongoConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  try {
+    const { id } = await params;
+    const employee = await getEmployeeById(id);
+    if (!employee) {
+      return NextResponse.json({ error: "Applicant not found" }, { status: 404 });
+    }
+    return NextResponse.json(employee, {
+      headers: { "Cache-Control": "private, no-store, must-revalidate" },
+    });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch applicant" }, { status: 500 });
+  }
 }
 
 export async function PATCH(

@@ -1,11 +1,12 @@
 import Image from "next/image";
+import { employeePhotoUrl } from "@/lib/employeePhoto";
 
 interface EmployeeCardProps {
+  id: string;
   fullName: string;
   phoneNumber: string;
   passportNumber: string;
   gender: string;
-  photograph: string;
   age: number;
   status: string;
 }
@@ -38,11 +39,11 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; d
 };
 
 export default function EmployeeCard({
+  id,
   fullName,
   phoneNumber,
   passportNumber,
   gender,
-  photograph,
   age,
   status,
 }: EmployeeCardProps) {
@@ -59,9 +60,10 @@ export default function EmployeeCard({
       {/* Photo */}
       <div className="relative h-32 sm:h-48 bg-gradient-to-br from-mccain-gray to-gray-200 overflow-hidden">
         <Image
-          src={photograph}
+          src={employeePhotoUrl(id)}
           alt={fullName}
           fill
+          unoptimized
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
